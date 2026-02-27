@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1on1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+<style>
+:root {
+  --bg: #F8F9FA;
+  --surface: #FFFFFF;
+  --surface-2: #F3F5F7;
+  --border: #E2E8F0;
+  --border-focus: #1A365D;
+  --accent: #1A365D;
+  --accent-light: #EBF0F8;
+  --accent-mid: #2A4A7F;
+  --green: #2D7A5C;
+  --green-bg: #EAF5EF;
+  --amber: #B45309;
+  --amber-bg: #FEF3C7;
+  --error: #C0392B;
+  --text: #333333;
+  --text-2: #64748B;
+  --text-3: #94A3B8;
+  --shadow-card: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  --shadow-hover: 0 2px 8px rgba(0,0,0,0.08), 0 6px 24px rgba(0,0,0,0.06);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* ─── LOCK SCREEN ─── */
+#lock-screen {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+}
+
+.lock-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+}
+
+.lock-icon {
+  width: 56px; height: 56px;
+  border-radius: 14px;
+  background: var(--accent-light);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 24px;
+}
+
+.lock-title-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+}
+
+.lock-sub {
+  font-size: 13px;
+  color: var(--text-2);
+  margin-bottom: 28px;
+  line-height: 1.6;
+}
+
+.lock-label {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+
+.lock-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 13px 16px;
+  font-size: 16px;
+  color: var(--text);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  letter-spacing: 0.08em;
+  margin-bottom: 16px;
+}
+
+.lock-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(26,54,93,0.1);
+}
+.lock-input.error { border-color: var(--error); animation: shake 0.3s ease; }
+
+@keyframes shake {
+  0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)}
+}
+
+.lock-hint {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: -10px;
+  margin-bottom: 20px;
+  text-align: left;
+  line-height: 1.5;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 13px;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  letter-spacing: 0.02em;
+}
+.btn-primary:hover { background: var(--accent-mid); }
+.btn-primary:active { transform: scale(0.98); }
+
+.lock-error-msg {
+  font-size: 12px;
+  color: var(--error);
+  margin-top: 12px;
+  display: none;
+}
+
+.lock-info {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 20px;
+  line-height: 1.6;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+/* ─── MAIN APP ─── */
+#app {
+  display: none;
+  padding: 32px 16px 64px;
+}
+
+/* top bar */
+.topbar {
+  max-width: 680px;
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.title-block { flex: 1; min-width: 0; }
+
+.page-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 5px;
+}
+
+.page-title {
+  font-size: clamp(20px, 5vw, 26px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.page-title[contenteditable="true"] {
+  outline: none;
+  border-bottom: 1.5px dashed var(--border);
+  padding-bottom: 2px;
+  cursor: text;
+}
+.page-title[contenteditable="true"]:focus {
+  border-bottom-color: var(--accent);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.date-input {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-2);
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.date-input:focus { border-color: var(--accent); }
+
+.btn-pdf {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-pdf:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+.btn-lock {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-3);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-lock:hover { border-color: var(--error); color: var(--error); }
+
+/* status bar */
+.status-bar {
+  max-width: 680px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--text-3);
+  transition: background 0.3s;
+}
+.status-dot.saved { background: var(--green); }
+.status-dot.saving { background: #D97706; animation: pulse 0.8s infinite; }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* agenda cards */
+.agenda-list {
+  max-width: 680px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+details.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow-card);
+}
+
+details.card:hover { box-shadow: var(--shadow-hover); }
+details.card[open] {
+  border-color: rgba(26,54,93,0.25);
+  box-shadow: var(--shadow-hover);
+}
+
+details.card summary {
+  list-style: none;
+  padding: 18px 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  background: var(--surface);
+  transition: background 0.15s;
+}
+details.card summary:hover { background: #FAFBFC; }
+details.card summary::-webkit-details-marker { display: none; }
+
+.badge {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 600;
+  flex-shrink: 0;
+  background: var(--surface-2);
+  color: var(--text-2);
+  transition: all 0.2s;
+  border: 1px solid var(--border);
+}
+details.card[open] .badge {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: rgba(26,54,93,0.2);
+}
+
+.summary-info { flex: 1; }
+.summary-title { font-size: 15px; font-weight: 600; color: var(--text); line-height: 1.4; flex: 1; }
+.summary-topics { font-size: 12px; color: var(--text-3); margin-top: 3px; line-height: 1.5; }
+
+.time-tag {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+  background: var(--surface-2);
+  padding: 4px 10px;
+  border-radius: 99px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
+.chevron {
+  width: 16px; height: 16px;
+  color: var(--text-3);
+  transition: transform 0.25s ease, color 0.2s;
+  flex-shrink: 0;
+}
+details.card[open] .chevron { transform: rotate(180deg); color: var(--accent); }
+
+.card-body {
+  padding: 0 20px 22px;
+  animation: fadeIn 0.18s ease;
+}
+
+@keyframes fadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+
+.divider { height: 1px; background: var(--border); margin: 0 20px; }
+
+.topic-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 14px 0 16px;
+}
+
+.chip {
+  font-size: 12px;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 5px 13px;
+  line-height: 1.4;
+}
+
+.memo-box {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.memo-box:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(26,54,93,0.08);
+}
+
+.memo-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.memo-label-txt {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.char-count {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+textarea.memo {
+  width: 100%;
+  min-height: 100px;
+  background: #fff;
+  border: none;
+  outline: none;
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  resize: vertical;
+  line-height: 1.8;
+}
+textarea.memo::placeholder { color: var(--text-3); }
+
+/* hint section */
+.hint-section {
+  max-width: 680px;
+  margin: 14px auto 0;
+}
+
+details.hint-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+details.hint-card[open] { border-color: rgba(180,83,9,0.25); }
+
+details.hint-card summary {
+  list-style: none;
+  padding: 15px 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  user-select: none;
+  transition: background 0.15s;
+}
+details.hint-card summary:hover { background: #FAFBFC; }
+details.hint-card summary::-webkit-details-marker { display: none; }
+
+.hint-icon {
+  font-size: 16px; flex-shrink: 0;
+}
+.hint-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+details.hint-card[open] .hint-title { color: var(--amber); }
+
+.hint-body {
+  padding: 4px 20px 20px;
+  animation: fadeIn 0.18s ease;
+}
+
+.hint-item {
+  display: flex;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.7;
+}
+.hint-item:last-child { border-bottom: none; }
+
+.hint-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--amber);
+  background: var(--amber-bg);
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 2px;
+}
+
+/* ─── PRINT / PDF ─── */
+@media print {
+  body { background: #fff; color: #111; font-size: 12px; line-height: 1.6; }
+  #lock-screen { display: none !important; }
+  #app { display: block !important; padding: 0; }
+  .topbar-right, .btn-lock, .btn-pdf, .status-bar, .hint-section { display: none !important; }
+  .topbar { margin-bottom: 16px; border-bottom: 1px solid #ddd; padding-bottom: 12px; }
+  .page-title { color: #111; font-size: 20px; }
+  .page-label { color: #1A365D; }
+  details.card { border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; break-inside: avoid; box-shadow: none; }
+  details.card summary { padding: 12px 16px; background: #fff; }
+  .badge { background: #f0f4f8; color: #333; border-color: #ddd; }
+  .summary-title { color: #111; }
+  .summary-topics, .time-tag, .chevron { display: none; }
+  .divider { background: #eee; }
+  .topic-chips { padding: 8px 0; }
+  .chip { border-color: #ddd; color: #555; background: #f8f9fa; }
+  .memo-box { background: #fafafa; border-color: #ddd; box-shadow: none; }
+  .memo-top { margin-bottom: 4px; }
+  .memo-label-txt { color: #888; }
+  .char-count { display: none; }
+  textarea.memo { color: #111; min-height: unset; }
+  details { display: block; }
+  details > summary { display: none; }
+}
+
+/* Mobile */
+@media (max-width: 520px) {
+  .topbar { flex-direction: column; align-items: flex-start; }
+  .topbar-right { width: 100%; justify-content: flex-end; }
+  .lock-card { padding: 28px 20px; }
+  details.card summary { padding: 15px 16px; }
+  .card-body { padding: 0 16px 18px; }
+  .divider { margin: 0 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ─── LOCK SCREEN ─── -->
+<div id="lock-screen">
+  <div class="lock-card">
+    <div class="lock-icon">🔐</div>
+    <div class="lock-title-name" id="lock-title">1on1</div>
+    <div class="lock-sub" id="lock-sub">パスワードを設定してください</div>
+    <div class="lock-label">パスワード</div>
+    <input type="password" class="lock-input" id="pw-input" placeholder="パスワードを入力" autocomplete="off">
+    <div class="lock-hint" id="pw-hint">※ 初回：任意のパスワードを設定します</div>
+    <button class="btn-primary" id="pw-btn">ロック解除</button>
+    <div class="lock-error-msg" id="pw-error">パスワードが正しくありません。</div>
+    <div class="lock-info">メモはこのパスワードで暗号化され、<br>ブラウザにのみ保存されます。</div>
+  </div>
+</div>
+
+<!-- ─── MAIN APP ─── -->
+<div id="app">
+  <div class="topbar">
+    <div class="title-block">
+      <div class="page-label">1on1 Meeting</div>
+      <div class="page-title" id="page-title" contenteditable="true" spellcheck="false">テンプレート</div>
+    </div>
+    <div class="topbar-right">
+      <input type="date" class="date-input" id="meeting-date">
+      <button class="btn-pdf" onclick="printPDF()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        PDF出力
+      </button>
+      <button class="btn-lock" onclick="lockScreen()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        ロック
+      </button>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-txt">—</span>
+  </div>
+
+  <div class="agenda-list">
+
+    <!-- ① アイスブレイク -->
+    <details class="card" open>
+      <summary>
+        <div class="badge">①</div>
+        <span class="summary-title">アイスブレイク</span>
+        <span class="time-tag">5 min</span>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </summary>
+      <div class="divider"></div>
+      <div class="card-body">
+        <div class="topic-chips">
+          <span class="chip">最近どう？</span>
+          <span class="chip">体調・コンディション</span>
+          <span class="chip">業務以外の近況</span>
+        </div>
+        <div class="memo-box">
+          <div class="memo-top">
+            <span class="memo-label-txt">メモ</span>
+            <span class="char-count" id="cc-1">0 字</span>
+          </div>
+          <textarea class="memo" id="memo-1" placeholder="ここにメモを入力…" oninput="autoSave('1')"></textarea>
+        </div>
+      </div>
+    </details>
+
+    <!-- ② 直近の振り返り -->
+    <details class="card">
+      <summary>
+        <div class="badge">②</div>
+        <span class="summary-title">直近の振り返り</span>
+        <span class="time-tag">10 min</span>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </summary>
+      <div class="divider"></div>
+      <div class="card-body">
+        <div class="topic-chips">
+          <span class="chip">今月うまくいったこと</span>
+          <span class="chip">うまくいかなかったこと</span>
+          <span class="chip">想定外だったこと</span>
+          <span class="chip">数値・成果の確認</span>
+        </div>
+        <div class="memo-box">
+          <div class="memo-top">
+            <span class="memo-label-txt">メモ</span>
+            <span class="char-count" id="cc-2">0 字</span>
+          </div>
+          <textarea class="memo" id="memo-2" placeholder="ここにメモを入力…" oninput="autoSave('2')"></textarea>
+        </div>
+      </div>
+    </details>
+
+    <!-- ③ 課題・困りごと -->
+    <details class="card">
+      <summary>
+        <div class="badge">③</div>
+        <span class="summary-title">課題・困りごと</span>
+        <span class="time-tag">10 min</span>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </summary>
+      <div class="divider"></div>
+      <div class="card-body">
+        <div class="topic-chips">
+          <span class="chip">今一番のボトルネック</span>
+          <span class="chip">上司に支援してほしいこと</span>
+          <span class="chip">組織・顧客・社内調整の悩み</span>
+        </div>
+        <div class="memo-box">
+          <div class="memo-top">
+            <span class="memo-label-txt">メモ</span>
+            <span class="char-count" id="cc-3">0 字</span>
+          </div>
+          <textarea class="memo" id="memo-3" placeholder="ここにメモを入力…" oninput="autoSave('3')"></textarea>
+        </div>
+      </div>
+    </details>
+
+    <!-- ④ 中長期テーマ -->
+    <details class="card">
+      <summary>
+        <div class="badge">④</div>
+        <span class="summary-title">中長期テーマ</span>
+        <span class="time-tag">3–5 min</span>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </summary>
+      <div class="divider"></div>
+      <div class="card-body">
+        <div class="topic-chips">
+          <span class="chip">今後伸ばしたいスキル</span>
+          <span class="chip">キャリアの方向性</span>
+          <span class="chip">任せてほしい仕事</span>
+        </div>
+        <div class="memo-box">
+          <div class="memo-top">
+            <span class="memo-label-txt">メモ</span>
+            <span class="char-count" id="cc-4">0 字</span>
+          </div>
+          <textarea class="memo" id="memo-4" placeholder="ここにメモを入力…" oninput="autoSave('4')"></textarea>
+        </div>
+      </div>
+    </details>
+
+  </div><!-- /agenda-list -->
+
+  <!-- 運用のヒント -->
+  <div class="hint-section">
+    <details class="hint-card">
+      <summary>
+        <span class="hint-icon">💡</span>
+        <span class="hint-title">運用のヒント（備忘録）</span>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </summary>
+      <div class="divider"></div>
+      <div class="hint-body">
+        <div class="hint-item"><span class="hint-num">①</span><span>アイスブレイクは<strong>心理的安全性づくり</strong>が目的。雑談を大切に。</span></div>
+        <div class="hint-item"><span class="hint-num">②</span><span>振り返りは評価面談ではないので、<strong>「詰問」にならない</strong>ことが重要。</span></div>
+        <div class="hint-item"><span class="hint-num">③</span><span>解決よりも<strong>「整理」を優先</strong>。上司は答えを出しすぎない。</span></div>
+        <div class="hint-item"><span class="hint-num">④</span><span><strong>毎回やらなくてもOK</strong>（月1回なら軽く触れる程度）。</span></div>
+      </div>
+    </details>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+// ─── 設定 ───
+const STORAGE_PREFIX = 'oneon1_';
+let CURRENT_PW = null;
+let saveTimer = null;
+
+// ─── ストレージキー（ファイル名ベース）───
+function getFileKey() {
+  // パス末尾のファイル名を取得 (例: tanaka.html → tanaka)
+  const path = window.location.pathname;
+  const file = path.split('/').pop().replace(/\.html?$/i, '') || 'template';
+  return file;
+}
+
+const FILE_KEY = getFileKey();
+
+// ─── 初期化 ───
+window.addEventListener('DOMContentLoaded', () => {
+  const today = new Date();
+  document.getElementById('meeting-date').value = today.toISOString().split('T')[0];
+
+  const hasData = localStorage.getItem(STORAGE_PREFIX + FILE_KEY + '_check');
+  if (hasData) {
+    // 既存データあり → パスワード入力モード
+    document.getElementById('lock-sub').textContent = 'パスワードを入力してください';
+    document.getElementById('pw-hint').textContent = '※ 設定済みのパスワードを入力します';
+    document.getElementById('pw-btn').textContent = 'ロック解除';
+    // ロック画面タイトルをファイルキーから推測
+    updateLockTitle();
+  } else {
+    document.getElementById('lock-sub').textContent = 'はじめてのアクセスです。パスワードを設定してください';
+    document.getElementById('pw-btn').textContent = 'パスワードを設定して開始';
+  }
+
+  document.getElementById('pw-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitPassword();
+  });
+});
+
+function updateLockTitle() {
+  const key = getFileKey();
+  if (key !== 'template') {
+    // ファイル名をそのまま表示（例: tanaka → tanaka）
+    document.getElementById('lock-title').textContent = key + ' の 1on1';
+  }
+}
+
+function submitPassword() {
+  const pw = document.getElementById('pw-input').value;
+  if (!pw || pw.length < 1) return;
+
+  const hasData = localStorage.getItem(STORAGE_PREFIX + FILE_KEY + '_check');
+
+  if (!hasData) {
+    // 初回セットアップ
+    CURRENT_PW = pw;
+    const checkVal = CryptoJS.AES.encrypt('OK', pw).toString();
+    localStorage.setItem(STORAGE_PREFIX + FILE_KEY + '_check', checkVal);
+    unlockApp();
+  } else {
+    // 既存データ → 照合
+    try {
+      const dec = CryptoJS.AES.decrypt(hasData, pw).toString(CryptoJS.enc.Utf8);
+      if (dec === 'OK') {
+        CURRENT_PW = pw;
+        unlockApp();
+      } else {
+        showPwError();
+      }
+    } catch(e) {
+      showPwError();
+    }
+  }
+}
+
+function showPwError() {
+  const inp = document.getElementById('pw-input');
+  inp.classList.add('error');
+  document.getElementById('pw-error').style.display = 'block';
+  setTimeout(() => inp.classList.remove('error'), 400);
+  inp.value = '';
+  inp.focus();
+}
+
+document.getElementById('pw-btn').addEventListener('click', submitPassword);
+
+function unlockApp() {
+  document.getElementById('lock-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadAllData();
+  updatePageTitle();
+}
+
+function updatePageTitle() {
+  const key = getFileKey();
+  const titleEl = document.getElementById('page-title');
+  if (key && key !== 'template') {
+    // ファイルキーをタイトルに反映（例: tanaka → 田中さん…は自動変換できないので表示はそのまま）
+    titleEl.textContent = key + ' の1on1';
+  }
+  // タイトル編集時に保存
+  titleEl.addEventListener('input', () => {
+    setStatus('saving');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      saveEncrypted('title', titleEl.textContent.trim());
+      setStatus('saved');
+    }, 600);
+  });
+  // 保存済みタイトルがあれば復元
+  const savedTitle = loadDecrypted('title');
+  if (savedTitle) titleEl.textContent = savedTitle;
+}
+
+// ─── 暗号化 / 復号 ───
+function saveEncrypted(key, value) {
+  try {
+    const enc = CryptoJS.AES.encrypt(value, CURRENT_PW).toString();
+    localStorage.setItem(STORAGE_PREFIX + FILE_KEY + '_' + key, enc);
+  } catch(e) {}
+}
+
+function loadDecrypted(key) {
+  try {
+    const raw = localStorage.getItem(STORAGE_PREFIX + FILE_KEY + '_' + key);
+    if (!raw) return null;
+    const dec = CryptoJS.AES.decrypt(raw, CURRENT_PW).toString(CryptoJS.enc.Utf8);
+    return dec || null;
+  } catch(e) { return null; }
+}
+
+// ─── オートセーブ ───
+function autoSave(num) {
+  const ta = document.getElementById('memo-' + num);
+  updateCharCount(num, ta.value.length);
+  setStatus('saving');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveEncrypted('memo' + num, ta.value);
+    // 日付も一緒に保存
+    saveEncrypted('date', document.getElementById('meeting-date').value);
+    setStatus('saved');
+  }, 500);
+}
+
+document.getElementById('meeting-date').addEventListener('change', () => {
+  saveEncrypted('date', document.getElementById('meeting-date').value);
+});
+
+function updateCharCount(num, len) {
+  document.getElementById('cc-' + num).textContent = len + ' 字';
+}
+
+// ─── 全データ読み込み ───
+function loadAllData() {
+  for (let i = 1; i <= 4; i++) {
+    const val = loadDecrypted('memo' + i);
+    if (val !== null) {
+      const ta = document.getElementById('memo-' + i);
+      ta.value = val;
+      updateCharCount(String(i), val.length);
+    }
+  }
+  const savedDate = loadDecrypted('date');
+  if (savedDate) document.getElementById('meeting-date').value = savedDate;
+  setStatus('saved');
+}
+
+// ─── ステータス ───
+function setStatus(state) {
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-txt');
+  if (state === 'saving') {
+    dot.className = 'status-dot saving';
+    txt.textContent = '保存中…';
+  } else {
+    dot.className = 'status-dot saved';
+    const now = new Date();
+    txt.textContent = `最終保存 ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+  }
+}
+
+// ─── ロック ───
+function lockScreen() {
+  if (!confirm('画面をロックしますか？\n（未保存のメモがある場合は先に入力を止めてください）')) return;
+  CURRENT_PW = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('lock-screen').style.display = 'flex';
+  document.getElementById('pw-input').value = '';
+  document.getElementById('pw-error').style.display = 'none';
+  document.getElementById('lock-sub').textContent = 'パスワードを入力してください';
+  document.getElementById('pw-hint').textContent = '※ 設定済みのパスワードを入力します';
+  document.getElementById('pw-btn').textContent = 'ロック解除';
+}
+
+// ─── PDF印刷 ───
+function printPDF() {
+  // 全details を一時的に open
+  const cards = document.querySelectorAll('details.card');
+  const wasOpen = [];
+  cards.forEach((d, i) => { wasOpen[i] = d.open; d.open = true; });
+  window.print();
+  // 印刷後に元に戻す
+  setTimeout(() => {
+    cards.forEach((d, i) => { d.open = wasOpen[i]; });
+  }, 1000);
+}
+</script>
+</body>
+</html>
